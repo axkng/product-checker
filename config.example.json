@@ -1,0 +1,17 @@
+{
+  "telegram": "YOUR_BOT_TOKEN:YOUR_CHAT_ID",
+  "interval": 60,
+  "timeout": 5,
+  "product": [
+    {
+      "name": "Product Price",
+      "url": "https://example.com/item1",
+      "value": "1.599"
+    },
+    {
+      "name": "Stock Status", 
+      "url": "https://example.com/item2",
+      "value": "In Stock"
+    }
+  ]
+}
