@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   product-checker:
-    image: ghcr.io/axkng/product-availability-checker:latest
+    image: ghcr.io/axkng/product-checker:latest
     container_name: product-checker
     restart: unless-stopped
     volumes:
