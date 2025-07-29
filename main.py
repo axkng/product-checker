@@ -42,7 +42,11 @@ class ProductChecker:
         logger.info(f"Checking product: {name}")
 
         try:
-            response = self.session.get(url, timeout=timeout)
+            # Add timestamp to URL to bypass all caching layers
+            separator = "&" if "?" in url else "?"
+            cache_bust_url = f"{url}{separator}_t={int(time.time())}"
+
+            response = self.session.get(cache_bust_url, timeout=timeout)
             response.raise_for_status()
 
             content = response.text
