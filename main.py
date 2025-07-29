@@ -22,9 +22,11 @@ class ProductChecker:
         self.session.headers.update(
             {
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
-                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
                 "Pragma": "no-cache",
                 "Expires": "0",
+                "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT",
+                "If-None-Match": "*",
             }
         )
 
