@@ -25,8 +25,6 @@ class ProductChecker:
                 "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
                 "Pragma": "no-cache",
                 "Expires": "0",
-                "If-Modified-Since": "Thu, 01 Jan 1970 00:00:00 GMT",
-                "If-None-Match": "*",
             }
         )
 
