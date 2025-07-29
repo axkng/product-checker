@@ -13,13 +13,18 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libasound2 \
     libx11-xcb1 \
+    libpci3 \
+    libgl1-mesa-glx \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser -u 900 appuser
+# Create non-root user with home directory and cache permissions
+RUN groupadd -r appuser && useradd -r -g appuser -u 900 -m appuser && \
+    mkdir -p /home/appuser/.cache && \
+    chown -R appuser:appuser /home/appuser
 
 # Set up application directory
 WORKDIR /app
@@ -35,6 +40,7 @@ RUN uv export --no-dev --format requirements-txt > requirements.txt && \
 
 # Set Playwright browsers path and install Firefox
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+ENV PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
 RUN mkdir -p /opt/playwright-browsers && \
     uv run playwright install firefox && \
     chmod -R 755 /opt/playwright-browsers

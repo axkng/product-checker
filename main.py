@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+import asyncio
 import logging
-import time
 
 import requests
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 
 from config import get_chat_id, get_telegram_token, load_config
 
@@ -27,7 +27,7 @@ class ProductChecker:
                 True  # Assume value is present initially
             )
 
-    def check_product(self, product):
+    async def check_product(self, product):
         name = product["name"]
         url = product["url"]
         expected_value = product["value"]
@@ -38,25 +38,33 @@ class ProductChecker:
         try:
             # Initialize browser if needed
             if not self.browser:
-                self.playwright = sync_playwright().start()
-                self.browser = self.playwright.firefox.launch(headless=True)
+                logger.info("Starting Playwright...")
+                self.playwright = await async_playwright().start()
+                logger.info("Launching Firefox browser...")
+                self.browser = await self.playwright.firefox.launch(headless=True)
+                logger.info("Browser launched successfully")
 
             # Create new page for this request
-            page = self.browser.new_page()
+            logger.info("Creating new page...")
+            page = await self.browser.new_page()
 
             # Set cache-busting and realistic behavior
-            page.set_extra_http_headers(
+            logger.info("Setting headers...")
+            await page.set_extra_http_headers(
                 {"Cache-Control": "no-cache", "Pragma": "no-cache"}
             )
 
             # Navigate to the page with timeout
-            page.goto(url, timeout=timeout)
+            logger.info(f"Navigating to {url}...")
+            await page.goto(url, timeout=timeout)
 
             # Wait a moment for dynamic content to load
-            page.wait_for_timeout(1000)  # 1 second
+            logger.info("Waiting for content to load...")
+            await page.wait_for_timeout(1000)  # 1 second
 
             # Get page content
-            content = page.content()
+            logger.info("Getting page content...")
+            content = await page.content()
             value_present = expected_value in content
 
             logger.info(
@@ -79,7 +87,7 @@ class ProductChecker:
                 self.product_states[name] = True
 
             # Close the page
-            page.close()
+            await page.close()
 
         except Exception as e:
             error_msg = f"Error checking product '{name}': {e}"
@@ -109,37 +117,37 @@ class ProductChecker:
         except Exception as e:
             logger.error(f"Failed to send Telegram notification: {e}")
 
-    def cleanup(self):
+    async def cleanup(self):
         """Clean up Playwright resources"""
         if self.browser:
-            self.browser.close()
+            await self.browser.close()
         if self.playwright:
-            self.playwright.stop()
+            await self.playwright.stop()
 
-    def run(self):
+    async def run(self):
         logger.info(f"Monitoring {len(self.config['product'])} products...")
 
         while True:
             for product in self.config["product"]:
-                self.check_product(product)
+                await self.check_product(product)
 
-            time.sleep(self.config["interval"])
+            await asyncio.sleep(self.config["interval"])
 
 
-def main():
+async def main():
     checker = None
     try:
         config = load_config()
         checker = ProductChecker(config)
-        checker.run()
+        await checker.run()
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     except Exception as e:
         logger.error(f"Failed to start: {e}")
     finally:
         if checker:
-            checker.cleanup()
+            await checker.cleanup()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
