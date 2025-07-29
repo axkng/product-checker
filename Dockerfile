@@ -32,10 +32,8 @@ RUN uv export --no-dev --format requirements-txt > requirements.txt && \
     uv pip install --system -r requirements.txt && \
     rm requirements.txt
 
-# Install Playwright Firefox browser (as non-root for security)
-USER appuser
+# Install Playwright Firefox browser
 RUN uv run playwright install firefox
-USER root
 
 # Copy application files
 COPY main.py config.py ./
