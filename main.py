@@ -20,10 +20,20 @@ class ProductChecker:
         self.chat_id = get_chat_id(config)
         self.product_states = {}
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
-            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:140.0) Gecko/20100101 Firefox/140.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "cross-site",
+            "DNT": "1",
+            "Sec-GPC": "1",
+            "Priority": "u=0, i",
+            "Cache-Control": "no-cache",
             "Pragma": "no-cache",
-            "Expires": "0",
         }
 
         for product in config["product"]:
