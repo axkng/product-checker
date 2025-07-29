@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import random
 import time
 
 import requests
@@ -39,14 +40,20 @@ class ProductChecker:
         logger.info(f"Checking product: {name}")
 
         try:
-            # Add timestamp to URL to bypass all caching layers
+            # Add multiple cache-busting parameters
             separator = "&" if "?" in url else "?"
-            cache_bust_url = f"{url}{separator}_t={int(time.time())}"
+            timestamp = int(time.time())
+            random_val = random.randint(100000, 999999)
+            cache_bust_url = f"{url}{separator}_t={timestamp}&_r={random_val}&_cb={hash(url) % 10000}"
+
+            # Vary User-Agent slightly to avoid CDN recognition
+            headers = self.headers.copy()
+            headers["User-Agent"] = (
+                f"Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.{random.randint(0, 9)}"
+            )
 
             # Create fresh session for each request to avoid any session-level caching
-            response = requests.get(
-                cache_bust_url, timeout=timeout, headers=self.headers
-            )
+            response = requests.get(cache_bust_url, timeout=timeout, headers=headers)
             response.raise_for_status()
 
             content = response.text
