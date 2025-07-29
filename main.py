@@ -44,7 +44,9 @@ class ProductChecker:
             cache_bust_url = f"{url}{separator}_t={int(time.time())}"
 
             # Create fresh session for each request to avoid any session-level caching
-            response = requests.get(cache_bust_url, timeout=timeout, headers=self.headers)
+            response = requests.get(
+                cache_bust_url, timeout=timeout, headers=self.headers
+            )
             response.raise_for_status()
 
             content = response.text
