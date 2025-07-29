@@ -3,7 +3,7 @@
 [![Lint](https://github.com/axkng/product-checker/actions/workflows/lint.yml/badge.svg)](https://github.com/axkng/product-checker/actions/workflows/lint.yml)
 [![Docker Build](https://github.com/axkng/product-checker/actions/workflows/docker.yml/badge.svg)](https://github.com/axkng/product-checker/actions/workflows/docker.yml)
 
-A lightweight Python tool to monitor specific values on websites via scraping. Sends Telegram notifications when monitored values are no longer present on the page.
+A Python tool to monitor specific values on websites using real browser automation. Sends Telegram notifications when monitored values are no longer present on the page.
 
 ## 🚀 Quick Start
 
@@ -44,18 +44,20 @@ A lightweight Python tool to monitor specific values on websites via scraping. S
    cd product-checker
    ```
 
-2. Install dependencies and run:
+2. Install dependencies and browser:
    ```bash
    uv sync
+   uv run playwright install firefox
    uv run python main.py
    ```
 
 ## 📋 Features
 
 - Monitors specific values on multiple websites via JSON config
-- Scrapes websites using HTTP requests with Firefox user agent
+- Uses real Firefox browser automation with Playwright for reliable scraping
+- Bypasses anti-bot detection and caching with authentic browser behavior
 - Telegram notifications when monitored values change or disappear
-- Simple Python implementation with minimal dependencies
+- JavaScript execution support for dynamic content
 - Error logging with timestamps
 - Runs continuously in Docker container
 - Easy to customize and extend
@@ -93,6 +95,7 @@ Create a `config.json` file based on `config.example.json`:
 
 - Python 3.11+
 - `uv` package manager
+- Firefox browser (installed via Playwright)
 - Dependencies managed via `pyproject.toml`
 
 ## 🔧 Development
@@ -101,6 +104,7 @@ Create a `config.json` file based on `config.example.json`:
 
 ```bash
 uv sync --dev
+uv run playwright install firefox
 uv run python main.py
 ```
 

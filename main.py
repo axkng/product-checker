@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import logging
-import random
 import time
 
 import requests
+from playwright.sync_api import sync_playwright
 
 from config import get_chat_id, get_telegram_token, load_config
 
@@ -19,22 +19,8 @@ class ProductChecker:
         self.token = get_telegram_token(config)
         self.chat_id = get_chat_id(config)
         self.product_states = {}
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:140.0) Gecko/20100101 Firefox/140.0",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate, br, zstd",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "cross-site",
-            "DNT": "1",
-            "Sec-GPC": "1",
-            "Priority": "u=0, i",
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-        }
+        self.playwright = None
+        self.browser = None
 
         for product in config["product"]:
             self.product_states[product["name"]] = (
@@ -45,28 +31,32 @@ class ProductChecker:
         name = product["name"]
         url = product["url"]
         expected_value = product["value"]
-        timeout = self.config.get("timeout", 5)
+        timeout = self.config.get("timeout", 5) * 1000  # Playwright uses milliseconds
 
         logger.info(f"Checking product: {name}")
 
         try:
-            # Add multiple cache-busting parameters
-            separator = "&" if "?" in url else "?"
-            timestamp = int(time.time())
-            random_val = random.randint(100000, 999999)
-            cache_bust_url = f"{url}{separator}_t={timestamp}&_r={random_val}&_cb={hash(url) % 10000}"
+            # Initialize browser if needed
+            if not self.browser:
+                self.playwright = sync_playwright().start()
+                self.browser = self.playwright.firefox.launch(headless=True)
 
-            # Vary User-Agent slightly to avoid CDN recognition
-            headers = self.headers.copy()
-            headers["User-Agent"] = (
-                f"Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.{random.randint(0, 9)}"
+            # Create new page for this request
+            page = self.browser.new_page()
+
+            # Set cache-busting and realistic behavior
+            page.set_extra_http_headers(
+                {"Cache-Control": "no-cache", "Pragma": "no-cache"}
             )
 
-            # Create fresh session for each request to avoid any session-level caching
-            response = requests.get(cache_bust_url, timeout=timeout, headers=headers)
-            response.raise_for_status()
+            # Navigate to the page with timeout
+            page.goto(url, timeout=timeout)
 
-            content = response.text
+            # Wait a moment for dynamic content to load
+            page.wait_for_timeout(1000)  # 1 second
+
+            # Get page content
+            content = page.content()
             value_present = expected_value in content
 
             logger.info(
@@ -87,6 +77,9 @@ class ProductChecker:
                 )
                 self.send_value_restored_message(name, url, expected_value)
                 self.product_states[name] = True
+
+            # Close the page
+            page.close()
 
         except Exception as e:
             error_msg = f"Error checking product '{name}': {e}"
@@ -116,6 +109,13 @@ class ProductChecker:
         except Exception as e:
             logger.error(f"Failed to send Telegram notification: {e}")
 
+    def cleanup(self):
+        """Clean up Playwright resources"""
+        if self.browser:
+            self.browser.close()
+        if self.playwright:
+            self.playwright.stop()
+
     def run(self):
         logger.info(f"Monitoring {len(self.config['product'])} products...")
 
@@ -127,6 +127,7 @@ class ProductChecker:
 
 
 def main():
+    checker = None
     try:
         config = load_config()
         checker = ProductChecker(config)
@@ -135,6 +136,9 @@ def main():
         logger.info("Shutting down...")
     except Exception as e:
         logger.error(f"Failed to start: {e}")
+    finally:
+        if checker:
+            checker.cleanup()
 
 
 if __name__ == "__main__":
