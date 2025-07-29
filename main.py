@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import asyncio
 import logging
+import time
 
 import requests
-from playwright.async_api import async_playwright
+from playwright.sync_api import sync_playwright
 
 from config import get_chat_id, get_telegram_token, load_config
 
@@ -22,12 +22,11 @@ class ProductChecker:
         self.playwright = None
         self.browser = None
 
+        # Initialize product states - will be set on first check
         for product in config["product"]:
-            self.product_states[product["name"]] = (
-                True  # Assume value is present initially
-            )
+            self.product_states[product["name"]] = None  # Unknown initially
 
-    async def check_product(self, product):
+    def check_product(self, product):
         name = product["name"]
         url = product["url"]
         expected_value = product["value"]
@@ -38,34 +37,28 @@ class ProductChecker:
         try:
             # Initialize browser if needed
             if not self.browser:
-                logger.info("Starting Playwright...")
-                self.playwright = await async_playwright().start()
-                logger.info("Launching Firefox browser...")
-                self.browser = await self.playwright.firefox.launch(headless=True)
-                logger.info("Browser launched successfully")
+                self.playwright = sync_playwright().start()
+                self.browser = self.playwright.firefox.launch(headless=True)
 
             # Create new page for this request
-            logger.info("Creating new page...")
-            page = await self.browser.new_page()
+            page = self.browser.new_page()
 
             # Set cache-busting and realistic behavior
-            logger.info("Setting headers...")
-            await page.set_extra_http_headers(
+            page.set_extra_http_headers(
                 {"Cache-Control": "no-cache", "Pragma": "no-cache"}
             )
 
             # Navigate to the page with timeout
-            logger.info(f"Navigating to {url}...")
-            await page.goto(url, timeout=timeout)
+            page.goto(url, timeout=timeout)
 
             # Wait a moment for dynamic content to load
-            logger.info("Waiting for content to load...")
-            await page.wait_for_timeout(1000)  # 1 second
+            page.wait_for_timeout(1000)  # 1 second
 
             # Get page content
-            logger.info("Getting page content...")
-            content = await page.content()
+            content = page.content()
             value_present = expected_value in content
+
+            logger.info(f"Value present: {value_present}")
 
             logger.info(
                 f"Product '{name}': checking for '{expected_value}' in content, value present: {value_present}"
@@ -73,7 +66,21 @@ class ProductChecker:
 
             was_value_present = self.product_states[name]
 
-            if not value_present and was_value_present:
+            # First check - set initial state and notify if value is missing
+            if was_value_present is None:
+                logger.info(
+                    f"Initial check for '{name}': setting baseline state to {value_present}"
+                )
+                self.product_states[name] = value_present
+
+                # If value is missing on first check, notify immediately
+                if not value_present:
+                    logger.info(
+                        f"Value '{expected_value}' not found on initial check - sending notification"
+                    )
+                    self.send_value_changed_message(name, url, expected_value)
+            # Subsequent checks - compare with previous state
+            elif not value_present and was_value_present:
                 logger.info(
                     f"Product '{name}': value '{expected_value}' is no longer present!"
                 )
@@ -85,9 +92,13 @@ class ProductChecker:
                 )
                 self.send_value_restored_message(name, url, expected_value)
                 self.product_states[name] = True
+            else:
+                logger.info(
+                    f"Product '{name}': no state change (value_present={value_present})"
+                )
 
             # Close the page
-            await page.close()
+            page.close()
 
         except Exception as e:
             error_msg = f"Error checking product '{name}': {e}"
@@ -124,30 +135,30 @@ class ProductChecker:
         if self.playwright:
             await self.playwright.stop()
 
-    async def run(self):
+    def run(self):
         logger.info(f"Monitoring {len(self.config['product'])} products...")
 
         while True:
             for product in self.config["product"]:
-                await self.check_product(product)
+                self.check_product(product)
 
-            await asyncio.sleep(self.config["interval"])
+            time.sleep(self.config["interval"])
 
 
-async def main():
+def main():
     checker = None
     try:
         config = load_config()
         checker = ProductChecker(config)
-        await checker.run()
+        checker.run()
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     except Exception as e:
         logger.error(f"Failed to start: {e}")
     finally:
         if checker:
-            await checker.cleanup()
+            checker.cleanup()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
