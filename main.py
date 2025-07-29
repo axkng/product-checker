@@ -18,15 +18,12 @@ class ProductChecker:
         self.token = get_telegram_token(config)
         self.chat_id = get_chat_id(config)
         self.product_states = {}
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
-                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-                "Pragma": "no-cache",
-                "Expires": "0",
-            }
-        )
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
 
         for product in config["product"]:
             self.product_states[product["name"]] = (
@@ -46,7 +43,8 @@ class ProductChecker:
             separator = "&" if "?" in url else "?"
             cache_bust_url = f"{url}{separator}_t={int(time.time())}"
 
-            response = self.session.get(cache_bust_url, timeout=timeout)
+            # Create fresh session for each request to avoid any session-level caching
+            response = requests.get(cache_bust_url, timeout=timeout, headers=self.headers)
             response.raise_for_status()
 
             content = response.text
